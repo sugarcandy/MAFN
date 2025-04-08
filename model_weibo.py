@@ -1,6 +1,3 @@
-"""
-filter,seed=2024
-"""
 
 import os
 from graph_part.rumor_dataset import Rumor_data, Rumor_data_test
@@ -58,14 +55,10 @@ class NeuralNetwork(nn.Module):
     def forward(self):
         pass
 
-    def mfan(self, x_tid, x_text, x_text_content, y, loss, i, total, params, pgd_word):
+    def marn(self, x_tid, x_text, x_text_content, y, loss, i, total, params, pgd_word):
         self.optimizer.zero_grad()
-        # 这里调用mfan的forward
+        # 这里调用marn的forward
         logit_original, dist_og, hidden, features = self.forward(x_tid, x_text, x_text_content)
-        # print(f"第{i}个批次的logits")
-        # print(logit_original)
-        # print(f"第{i}个批次的label")
-        # print(y)
         # 分类损失
         loss_classification = loss(logit_original, y)
 
@@ -74,8 +67,7 @@ class NeuralNetwork(nn.Module):
         loss_dis = loss_mse(dist_og[0], dist_og[1])
 
         # hidden的shape为[batch_size,output_dim]
-        # 此时features的shape为[batch_size,2,output_dim],为每一份数据创建了一个副本，进行对比
-        loss_cons = SupConLoss(temperature=2.0)  ## 1.0时候0.8949
+        loss_cons = SupConLoss(temperature=2.0)
         loss_constrative = loss_cons(features, y)
 
         losses = [loss_classification, loss_constrative, loss_dis]
@@ -106,7 +98,7 @@ class NeuralNetwork(nn.Module):
         if torch.cuda.is_available():
             self.cuda()
         batch_size = self.config['batch_size']
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=2e-3)  # 原始值为2e-3
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=2e-3) 
 
         X_train_tid = torch.LongTensor(X_train_tid).cuda()
         X_train = torch.LongTensor(X_train).cuda()
@@ -129,7 +121,7 @@ class NeuralNetwork(nn.Module):
             for i, data in enumerate(dataloader_iter):
                 total = len(dataloader)
                 batch_x_tid, batch_x_text, batch_x_text_content, batch_y = (item for item in data)
-                self.mfan(batch_x_tid, batch_x_text, batch_x_text_content, batch_y, loss, i, total, params, pgd_word)
+                self.marn(batch_x_tid, batch_x_text, batch_x_text_content, batch_y, loss, i, total, params, pgd_word)
             self.evaluate(X_test_tid, X_test, X_test_content, y_test)
 
     def evaluate(self, X_dev_tid, X_dev, X_dev_content, y_dev):
@@ -224,9 +216,9 @@ class ClipModel:
         return img_output.to(torch.float32)
 
 
-class MFAN(NeuralNetwork):
+class marn(NeuralNetwork):
     def __init__(self, config, adj, original_adj):
-        super(MFAN, self).__init__()
+        super(marn, self).__init__()
         self.config = config
         self.uV = adj.shape[0]
         embedding_weights = config['embedding_weights']
@@ -243,7 +235,7 @@ class MFAN(NeuralNetwork):
                                        uV=self.uV, nb_heads=1,
                                        original_adj=original_adj, dropout=0)
         self.image_embedding = resnet50()
-        self.clip_model, self.preprocess = clip.load("RN50", device=self.device)  ## ViT-B/32效果不好,这个0.8831
+        self.clip_model, self.preprocess = clip.load("RN50", device=self.device)
         # self.clip_model, self.preprocess = clip.load("ViT-B/32", device=self.device)
         bert_path = '../../bert/chinese'
         self.text_tokenizer = BertTokenizer.from_pretrained(bert_path)
@@ -442,7 +434,7 @@ torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 np.random.seed(seed)
 random.seed(seed)
-model = MFAN
+model = marn
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 torch.use_deterministic_algorithms(True)  # 查找为啥不能复现代码的原因
 train_and_test(model)
