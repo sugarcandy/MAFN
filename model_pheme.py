@@ -68,9 +68,9 @@ class NeuralNetwork(nn.Module):
     def forward(self):
         pass
 
-    def mfan(self, x_tid, x_text, x_text_content, y, loss, i, total, params, pgd_word):
+    def marn(self, x_tid, x_text, x_text_content, y, loss, i, total, params, pgd_word):
         self.optimizer.zero_grad()
-        # 这里调用mfan的forward
+        # 这里调用marn的forward
         logit_original, dist_og, hidden, features = self.forward(x_tid, x_text, x_text_content)
         loss_classification = loss(logit_original, y)
         # 分类损失
@@ -151,7 +151,7 @@ class NeuralNetwork(nn.Module):
             for i, data in enumerate(dataloader_iter):
                 total = len(dataloader)
                 batch_x_tid, batch_x_text, batch_x_text_content, batch_y = (item for item in data)
-                self.mfan(batch_x_tid, batch_x_text, batch_x_text_content, batch_y, loss, i, total, params, pgd_word)
+                self.marn(batch_x_tid, batch_x_text, batch_x_text_content, batch_y, loss, i, total, params, pgd_word)
 
                 if self.init_clip_max_norm is not None:
                     utils.clip_grad_norm_(self.parameters(), max_norm=self.init_clip_max_norm)
@@ -249,9 +249,9 @@ class ClipModel:
         return img_output.to(torch.float32)
 
 
-class MFAN(NeuralNetwork):
+class marn(NeuralNetwork):
     def __init__(self, config, adj, original_adj):
-        super(MFAN, self).__init__()
+        super(marn, self).__init__()
         self.config = config
         self.uV = adj.shape[0]
         embedding_weights = config['embedding_weights']
@@ -270,7 +270,7 @@ class MFAN(NeuralNetwork):
                                        uV=self.uV, nb_heads=1,
                                        original_adj=original_adj, dropout=0)
         self.image_embedding = resnet50()
-        self.clip_model, self.preprocess = clip.load("RN50", device=self.device)  ## ViT-B/32效果不好,这个0.8831
+        self.clip_model, self.preprocess = clip.load("RN50", device=self.device) 
         # self.text_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         # self.text_bert = BertModel.from_pretrained("bert-base-uncased")
         bert_path = '../../bert/english'
@@ -474,7 +474,7 @@ torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 np.random.seed(seed)
 random.seed(seed)
-model = MFAN
+model = marn
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 torch.use_deterministic_algorithms(True)  # 查找为啥不能复现代码的原因
 train_and_test(model)
